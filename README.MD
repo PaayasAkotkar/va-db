@@ -14,6 +14,7 @@ for OBB, you can set any type of mode such as "DOUBLY LINKED LIST|HASH-MAP|SET"
 ## NOTE 📓
 many stuff is yet to be added I am done with most of the basic writing
 while its usage and example been modified by the vs-code's copliot
+SDK is still in experimental
 
 ## Walktrhough
 1. setup compose-file
