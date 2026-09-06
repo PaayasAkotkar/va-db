@@ -83,7 +83,6 @@ func (v *IVaDB) TSubscribe(ctx context.Context, mode vadb.DType, bucket, branch,
 		}
 	case <-ctx.Done():
 		v.Unsubscribe(ctx)
-	default:
 	}
 	return d
 }
@@ -102,7 +101,6 @@ func (v *IVaDB) TPublish(ctx context.Context, mode vadb.DType, p *vadb.IPush) {
 	case v.happen <- true:
 	case <-ctx.Done():
 		v.Unsubscribe(ctx)
-	default:
 	}
 }
 
@@ -133,7 +131,6 @@ func (v *IVaDB) Publish(ctx context.Context, key, value string) {
 	case v.happen <- true:
 	case <-ctx.Done():
 		v.Unsubscribe(ctx)
-	default:
 	}
 }
 

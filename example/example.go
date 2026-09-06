@@ -69,7 +69,7 @@ func Mixture() {
 	}
 }
 
-func PubSub() {
+func KeyPubSub() {
 	ctx := context.Background()
 
 	port := "127.0.0.1:6379"
@@ -103,5 +103,105 @@ func PubSub() {
 		defer wg.Done()
 		va.Publish(ctx, "jolly", "12")
 	}()
+	wg.Wait()
+}
+
+func TreePubSub() {
+	ctx := context.Background()
+
+	port := "127.0.0.1:6379"
+	c, err := valkey.NewClient(valkey.ClientOption{
+		InitAddress: []string{port},
+	})
+	if err != nil {
+		panic(err)
+	}
+	va := vasdk1.New(vadb.IConfig{Cli: c,
+		Set: &vadb.ISettings{
+			TTL: time.Second * 12,
+		},
+	}, 10)
+	log.Println("succeed connection 🤗")
+	bucket, branch, object := "ps5", "games", "gta-vi"
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		data := va.TSubscribe(ctx, vadb.MAP, bucket, branch, object)
+		select {
+		case d := <-data:
+			log.Println("pulled data from valkey: ", *d)
+		default:
+			log.Println("waiting...")
+		}
+	}()
+	time.Sleep(2 * time.Second)
+	go func() {
+		defer wg.Done()
+		va.TPublish(ctx, vadb.MAP, &vadb.IPush{
+			Bucket: bucket,
+			Branch: branch,
+			Object: object,
+			Data:   "nov 19 2026",
+		})
+	}()
+	wg.Wait()
+}
+
+func AsyncPubSub() {
+	ctx := context.Background()
+
+	port := "127.0.0.1:6379"
+	c, err := valkey.NewClient(valkey.ClientOption{
+		InitAddress: []string{port},
+	})
+	if err != nil {
+		panic(err)
+	}
+	va := vasdk1.New(vadb.IConfig{Cli: c,
+		Set: &vadb.ISettings{
+			TTL: time.Second * 12,
+		},
+	}, 10)
+	log.Println("succeed connection 🤗")
+	bucket, branch, object := "ps5", "games", "gta-vi"
+	var wg sync.WaitGroup
+	wg.Add(4)
+	go func() {
+		defer wg.Done()
+		data := va.TSubscribe(ctx, vadb.MAP, bucket, branch, object)
+		select {
+		case d := <-data:
+			log.Println("pulled data from valkey: ", *d)
+		default:
+			log.Println("waiting...")
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		data := va.Subscribe(ctx, bucket)
+		select {
+		case d := <-data:
+			log.Println("pulled data from valkey: ", *d)
+		default:
+			log.Println("waiting...")
+		}
+	}()
+	time.Sleep(2 * time.Second)
+	go func() {
+		defer wg.Done()
+		va.TPublish(ctx, vadb.MAP, &vadb.IPush{
+			Bucket: bucket,
+			Branch: branch,
+			Object: object,
+			Data:   "via tree: nov 19 2026",
+		})
+	}()
+
+	go func() {
+		defer wg.Done()
+		va.Publish(ctx, bucket, "via key: nov 19 2026")
+	}()
+
 	wg.Wait()
 }

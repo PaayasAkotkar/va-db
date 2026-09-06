@@ -3,5 +3,5 @@ package main
 import "va/app/example"
 
 func main() {
-	example.Mixture()
+	example.AsyncPubSub()
 }

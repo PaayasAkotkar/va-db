@@ -24,6 +24,20 @@ func createKey(mode DType, bucket, branch, object string) *keycreation {
 	}
 }
 
+func normalizeKey(mode DType, guardKey string) *keycreation {
+	parts := strings.Split(guardKey, guard)
+	if len(parts) != 5 || parts[0] != string(mode) || parts[4] != "guard" {
+		return &keycreation{}
+	}
+
+	return &keycreation{
+		guardKey: guardKey,
+		bucket:   parts[1],
+		branch:   parts[2],
+		object:   parts[3],
+	}
+}
+
 // push
 
 func (v *IVaDB) push(ctx context.Context, mode DType, bucket, branch, object, data string) error {
@@ -64,30 +78,32 @@ func (v *IVaDB) push(ctx context.Context, mode DType, bucket, branch, object, da
 // pull
 
 type IPull struct {
-	Key   string
-	Data  string
-	Fresh bool
-	Error error
+	Bucket, Branch, Object string
+	Data                   string
+	Fresh                  bool
+	Error                  error
+	Mode                   DType
 }
 
 func (v *IVaDB) pullObject(ctx context.Context, mode DType, bucket, branch, object string) IPull {
 	k := createKey(mode, bucket, branch, object)
+	n := normalizeKey(mode, k.guardKey)
 
 	fresh, err := v.keyExists(ctx, k.guardKey)
 	if err != nil {
-		return IPull{Key: k.object, Error: err}
+		return IPull{Bucket: n.bucket, Branch: n.branch, Object: n.object, Fresh: fresh, Error: err, Mode: mode}
 	}
 
 	data, err := v.get(ctx, k.object)
-	return IPull{Key: k.object, Data: data, Fresh: fresh, Error: err}
+
+	return IPull{Bucket: n.bucket, Branch: n.branch, Object: n.object, Data: data, Fresh: fresh, Error: err, Mode: mode}
 }
 
 func (v *IVaDB) pullBranch(ctx context.Context, mode DType, bucket, branch string) []IPull {
 	objects, err := v.objectNames(ctx, mode, branch)
 	if err != nil {
-		return []IPull{{Error: err}}
+		return []IPull{{Error: err, Mode: mode}}
 	}
-
 	results := make([]IPull, 0, len(objects))
 	for _, obj := range objects {
 		results = append(results, v.pullObject(ctx, mode, bucket, branch, obj))
