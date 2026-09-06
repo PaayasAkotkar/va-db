@@ -3,8 +3,10 @@ package example
 import (
 	"context"
 	"log"
+	"sync"
 	"time"
 	vadb "va/app/core"
+	vasdk1 "va/app/sdk"
 
 	"github.com/valkey-io/valkey-go"
 )
@@ -65,4 +67,41 @@ func Mixture() {
 			panic(err)
 		}
 	}
+}
+
+func PubSub() {
+	ctx := context.Background()
+
+	port := "127.0.0.1:6379"
+	c, err := valkey.NewClient(valkey.ClientOption{
+		InitAddress: []string{port},
+	})
+	if err != nil {
+		panic(err)
+	}
+	va := vasdk1.New(vadb.IConfig{Cli: c,
+		Set: &vadb.ISettings{
+			TTL: time.Second * 12,
+		},
+	}, 10)
+	log.Println("succeed connection 🤗")
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		data := va.Subscribe(ctx, "jolly")
+		select {
+		case d := <-data:
+			log.Println("pulled data from valkey: ", *d)
+		default:
+			log.Println("waiting...")
+		}
+	}()
+	time.Sleep(2 * time.Second)
+	go func() {
+		defer wg.Done()
+		va.Publish(ctx, "jolly", "12")
+	}()
+	wg.Wait()
 }
