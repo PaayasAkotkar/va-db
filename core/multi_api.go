@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Push the data in OBB format
+// PushBucket the data in OBB format
 // modes:
 // - DLL a doubly linked list
 // - MAP a hash map
