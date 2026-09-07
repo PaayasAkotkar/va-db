@@ -93,7 +93,7 @@ func (v *IVaDB) TSubscribe(ctx context.Context, mode vadb.DType, bucket, branch,
 // - MAP a hash map
 // - SET a unordered map
 func (v *IVaDB) TPublish(ctx context.Context, mode vadb.DType, p *vadb.IPush) {
-	if err := v.core.Push(ctx, mode, p); err != nil {
+	if err := v.core.PushBucket(ctx, mode, p); err != nil {
 		log.Println(err)
 		return
 	}

@@ -11,7 +11,7 @@ import (
 // - DLL a doubly linked list
 // - MAP a hash map
 // - SET a unordered map
-func (v *IVaDB) Push(ctx context.Context, mode DType, p *IPush) error {
+func (v *IVaDB) PushBucket(ctx context.Context, mode DType, p *IPush) error {
 	if p == nil {
 		return fmt.Errorf("push payload is nil")
 	}
@@ -56,7 +56,7 @@ func (v *IVaDB) DeleteObject(ctx context.Context, mode DType, bucket, branch, ob
 }
 
 // DeleteBranch deletes the bucket's branch and its object
-func (v *IVaDB) DeleteBranch(ctx context.Context, mode DType, bucket, branch, object string) error {
+func (v *IVaDB) DeleteBranch(ctx context.Context, mode DType, bucket, branch string) error {
 	if !v.validMode(mode) {
 		return errValidMode
 	}

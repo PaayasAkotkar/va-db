@@ -48,7 +48,7 @@ func Mixture() {
 			{Bucket: bucket, Branch: branch, Object: "object_2", Data: "value_2"},
 			{Bucket: bucket, Branch: secondBranch, Object: "object_3", Data: "value_3"},
 		} {
-			if err := va.Push(ctx, mode, &item); err != nil {
+			if err := va.PushBucket(ctx, mode, &item); err != nil {
 				panic(err)
 			}
 		}
@@ -59,7 +59,7 @@ func Mixture() {
 		if err := va.DeleteObject(ctx, mode, bucket, branch, "object_1"); err != nil {
 			panic(err)
 		}
-		if err := va.DeleteBranch(ctx, mode, bucket, secondBranch, ""); err != nil {
+		if err := va.DeleteBranch(ctx, mode, bucket, secondBranch); err != nil {
 			panic(err)
 		}
 		log.Println(mode, "after deletes:", va.PullBucket(ctx, mode, bucket))

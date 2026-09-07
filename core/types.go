@@ -44,9 +44,8 @@ var (
 )
 
 type IPush struct {
-	Bucket, Branch, Object string // object is name
+	Bucket, Branch, Object string // specify the name
 	Data                   string // data to push
-	Mode                   DType  // imp
 	err                    error
 }
 
