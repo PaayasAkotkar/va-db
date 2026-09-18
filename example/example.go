@@ -90,7 +90,7 @@ func KeyPubSub() {
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		data := va.Subscribe(ctx, "jolly")
+		data := va.Subscribe(ctx, 100, "jolly")
 		select {
 		case d := <-data:
 			log.Println("pulled data from valkey: ", *d)
@@ -127,7 +127,7 @@ func TreePubSub() {
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		data := va.TSubscribe(ctx, vadb.MAP, bucket, branch, object)
+		data := va.TSubscribe(ctx, 100, vadb.MAP, bucket, branch, object)
 		select {
 		case d := <-data:
 			log.Println("pulled data from valkey: ", *d)
@@ -169,7 +169,7 @@ func AsyncPubSub() {
 	wg.Add(4)
 	go func() {
 		defer wg.Done()
-		data := va.TSubscribe(ctx, vadb.MAP, bucket, branch, object)
+		data := va.TSubscribe(ctx, 100, vadb.MAP, bucket, branch, object)
 		select {
 		case d := <-data:
 			log.Println("pulled data from valkey: ", *d)
@@ -179,7 +179,7 @@ func AsyncPubSub() {
 	}()
 	go func() {
 		defer wg.Done()
-		data := va.Subscribe(ctx, bucket)
+		data := va.Subscribe(ctx, 100, bucket)
 		select {
 		case d := <-data:
 			log.Println("pulled data from valkey: ", *d)

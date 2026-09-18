@@ -21,15 +21,16 @@ while its usage and example been modified by the vs-code's copliot
 3. go mod tidy && go build -o app.exe && app.exe
 
 
-## New 🔥
-- sdk-1 is ready with pub-sub system
 
 ## My View 👁️
 ```
 the sdk-1 is typically the same implementation from my https://github.com/PaayasAkotkar/cheetah;
 yet I feel like the clean process can be done more virtually and cleanly
-I would definity try to improve taht stuff
+I would definity try to improve that stuff
 ```
+
+## Changes ⚙️
+- TSubscription now utilizes the running for-loop so i tyically made it difference from the normal subscription
 
 ## Upcoming ▶️
 - va-websocket-client

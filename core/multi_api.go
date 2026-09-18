@@ -19,12 +19,12 @@ func (v *IVaDB) PushBucket(ctx context.Context, mode DType, p *IPush) error {
 	if err := v.push(ctx, mode, k.bucket, k.branch, k.object, p.Data); err != nil {
 		return err
 	}
-	t := time.Now().Format("03:04PM on 01-02-2006")
+	t := time.Now().Format("03:04PM on 10-12-2001")
 	return v.set(ctx, k.guardKey, "guarded@"+t, v.setg.TTL)
 }
 
 // PullBucket returns the bucket branches and the branches data
-func (v *IVaDB) PullBucket(ctx context.Context, mode DType, bucket string) any {
+func (v *IVaDB) PullBucket(ctx context.Context, mode DType, bucket string) [][]IPull {
 	k := createKey(mode, bucket, "", "")
 	return v.pullBucket(ctx, mode, k.bucket)
 }

@@ -44,9 +44,8 @@ var (
 )
 
 type IPush struct {
-	Bucket, Branch, Object string // specify the name
+	Bucket, Branch, Object string // object is name
 	Data                   string // data to push
-	err                    error
 }
 
 type ISettings struct {

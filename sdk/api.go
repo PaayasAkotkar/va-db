@@ -6,85 +6,72 @@ import (
 	vadb "va/app/core"
 )
 
-//// Push the data in OBB format
-//// modes:
-//// - DLL a doubly linked list
-//// - MAP a hash map
-//// - SET a unordered map
-//func (v *IVaDB) Push(ctx context.Context, mode vadb.DType, p *vadb.IPush) error {
-//	ps := v.getPerms(ctx, v.id)
-//	if v.contains(ps, RO) {
-//		return fmt.Errorf("auth invalid")
-//	}
-//	return v.core.Push(ctx, mode, p)
-//}
-//
-//// PullBucket returns the bucket branches and the branches data
-//func (v *IVaDB) PullBucket(ctx context.Context, mode vadb.DType, bucket string) any {
-//	ps := v.getPerms(ctx, v.id)
-//	if v.contains(ps, WO) {
-//		return fmt.Errorf("auth invalid")
-//	}
-//	return v.core.PullBucket(ctx, mode, bucket)
-//}
-//
-//// PullObject returns the object data
-//func (v *IVaDB) PullObject(ctx context.Context, mode vadb.DType, bucket, branch, object string) vadb.IPull {
-//	ps := v.getPerms(ctx, v.id)
-//	if v.contains(ps, WO) {
-//		return vadb.IPull{Error: fmt.Errorf("auth invalid")}
-//	}
-//	return v.core.PullObject(ctx, mode, bucket, branch, object)
-//}
-//
-//// PullBranch retuns the branches object data
-//func (v *IVaDB) PullBranch(ctx context.Context, mode vadb.DType, bucket, branch string) []vadb.IPull {
-//	ps := v.getPerms(ctx, v.id)
-//	if v.contains(ps, WO) {
-//		return []vadb.IPull{{Error: fmt.Errorf("auth invalid")}}
-//	}
-//	return v.core.PullBranch(ctx, mode, bucket, branch)
-//}
-//
-//// DeleteObject deletes the object from bucket's branch
-//func (v *IVaDB) DeleteObject(ctx context.Context, mode vadb.DType, bucket, branch, object string) error {
-//	ps := v.getPerms(ctx, v.id)
-//	if v.contains(ps, RO) {
-//		return fmt.Errorf("auth invalid")
-//	}
-//	return v.core.DeleteObject(ctx, mode, bucket, branch, object)
-//}
-//
-//// DeleteBranch deletes the bucket's branch and its object
-//func (v *IVaDB) DeleteBranch(ctx context.Context, mode vadb.DType, bucket, branch, object string) error {
-//	ps := v.getPerms(ctx, v.id)
-//	if v.contains(ps, RO) {
-//		return fmt.Errorf("auth invalid")
-//	}
-//	return v.DeleteBranch(ctx, mode, bucket, branch, object)
-//}
-//
-//// DeleteBucket deletes the bucket's & its related branch's and its objects
-//func (v *IVaDB) DeleteBucket(ctx context.Context, mode vadb.DType, bucket string) error {
-//	ps := v.getPerms(ctx, v.id)
-//	if v.contains(ps, RO) {
-//		return fmt.Errorf("auth invalid")
-//	}
-//	return v.DeleteBucket(ctx, mode, bucket)
-//}
+func (v *IVaDB) TSubscribe(
+	ctx context.Context,
+	n int, // number of outputs
+	mode vadb.DType,
+	bucket string,
+	branch string,
+	object string,
+) chan *vadb.IPull {
+	out := make(chan *vadb.IPull, n)
 
-func (v *IVaDB) TSubscribe(ctx context.Context, mode vadb.DType, bucket, branch, object string) chan *vadb.IPull {
-	d := make(chan *vadb.IPull, 1)
-	select {
-	case ch, ok := <-v.happen:
-		if ok && ch {
-			a := v.core.PullObject(ctx, mode, bucket, branch, object)
-			d <- &a
+	channel := createKey(
+		mode,
+		bucket,
+		branch,
+		object,
+	)
+
+	messages, errors := v.subscribeChannel(ctx, channel)
+
+	go func() {
+		defer close(out)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+
+			case err, ok := <-errors:
+				if ok && err != nil {
+					log.Println("valkey subscription:", err)
+				}
+				return
+
+			case msg, ok := <-messages:
+				if !ok {
+					return
+				}
+
+				// Pull happens internally.
+				//				result := v.core.PullObject(
+				//					ctx,
+				//					mode,
+				//					bucket,
+				//					branch,
+				//					object,
+				//				)
+				//
+				result := &vadb.IPull{
+					Bucket: bucket,
+					Branch: branch,
+					Object: object,
+					Data:   msg,
+					Fresh:  true,
+					Mode:   mode,
+					Error:  nil,
+				}
+				select {
+				case out <- result:
+				case <-ctx.Done():
+					return
+				}
+			}
 		}
-	case <-ctx.Done():
-		v.Unsubscribe(ctx)
-	}
-	return d
+	}()
+
+	return out
 }
 
 // TPublish the data in OBB format
@@ -92,20 +79,38 @@ func (v *IVaDB) TSubscribe(ctx context.Context, mode vadb.DType, bucket, branch,
 // - DLL a doubly linked list
 // - MAP a hash map
 // - SET a unordered map
-func (v *IVaDB) TPublish(ctx context.Context, mode vadb.DType, p *vadb.IPush) {
-	if err := v.core.PushBucket(ctx, mode, p); err != nil {
-		log.Println(err)
+func (v *IVaDB) TPublish(
+	ctx context.Context,
+	mode vadb.DType,
+	push *vadb.IPush,
+) {
+	if push == nil {
 		return
 	}
-	select {
-	case v.happen <- true:
-	case <-ctx.Done():
-		v.Unsubscribe(ctx)
+
+	if err := v.core.PushBucket(ctx, mode, push); err != nil {
+		log.Println("push bucket:", err)
+		return
+	}
+
+	channel := createKey(
+		mode,
+		push.Bucket,
+		push.Branch,
+		push.Object,
+	)
+
+	if err := v.createChannel(
+		ctx,
+		channel,
+		push.Data,
+	); err != nil {
+		log.Println("publish notification:", err)
 	}
 }
 
-func (v *IVaDB) Subscribe(ctx context.Context, key string) chan *string {
-	d := make(chan *string, 1)
+func (v *IVaDB) Subscribe(ctx context.Context, n int, key string) chan *string {
+	d := make(chan *string, n)
 	select {
 	case ch, ok := <-v.happen:
 		if ok && ch {
@@ -131,6 +136,73 @@ func (v *IVaDB) Publish(ctx context.Context, key, value string) {
 	case v.happen <- true:
 	case <-ctx.Done():
 		v.Unsubscribe(ctx)
+	}
+}
+
+func (v *IVaDB) ExplicitUnsubscribeKey(ctx context.Context, key string) error {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	ch := make(chan error, 1)
+	go func() {
+		ch <- v.core.DelKey(ctx, key)
+	}()
+	select {
+	case t := <-ch:
+		return t
+	case <-ctx.Done():
+		return nil
+	}
+}
+
+func (v *IVaDB) ExplicitRemoveObject(ctx context.Context, mode vadb.DType, bucket, branch, object string) error {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	ch := make(chan error, 1)
+	go func() {
+		if err := v.core.DeleteObject(ctx, mode, bucket, branch, object); err != nil {
+			ch <- err
+		}
+		ch <- nil
+	}()
+	select {
+	case t := <-ch:
+		return t
+	case <-ctx.Done():
+		return nil
+	}
+}
+func (v *IVaDB) ExplicitRemoveBranch(ctx context.Context, mode vadb.DType, bucket, branch string) error {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	ch := make(chan error, 1)
+	go func() {
+		if err := v.core.DeleteBranch(ctx, mode, bucket, branch); err != nil {
+			ch <- err
+		}
+		ch <- nil
+	}()
+	select {
+	case t := <-ch:
+		return t
+	case <-ctx.Done():
+		return nil
+	}
+}
+func (v *IVaDB) ExplicitRemoveBucket(ctx context.Context, mode vadb.DType, bucket string) error {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	ch := make(chan error, 1)
+	go func() {
+		if err := v.core.DeleteBucket(ctx, mode, bucket); err != nil {
+			ch <- err
+		}
+		ch <- nil
+	}()
+	select {
+	case t := <-ch:
+		return t
+	case <-ctx.Done():
+		return nil
 	}
 }
 
