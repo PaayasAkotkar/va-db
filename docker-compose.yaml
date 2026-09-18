@@ -1,9 +1,0 @@
-services:
-  va_valkey:
-    container_name: "va_valkey"
-    image: valkey/valkey:latest
-    ports:
-      - "6379:6379"
-    volumes:
-      - ./vault/va_valkey/cache:/data
-
